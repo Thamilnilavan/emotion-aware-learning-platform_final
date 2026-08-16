@@ -1,0 +1,40 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment variables
+.env
+.env.local
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Models and datasets
+# Note: the model folder is tracked via .gitkeep, but the large .h5 files are ignored
+model/*.h5
+model/*.keras
+model/*.weights
+*.zip
+*.tar.gz
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Datasets and Large Files
+dataset/
+model/DATASET/
+model/*.csv
+*.h5
+*.keras
+*.weights
+*.mp4
+*.avi

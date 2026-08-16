@@ -1,0 +1,153 @@
+'use client';
+
+import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  BookOpen,
+  Bot,
+  Brain,
+  Lightbulb,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Target,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Navbar } from '@/components/layout/Navbar';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { assistantAPI, AssistantMessage } from '@/services/api/assistant';
+
+const welcomeMessage: AssistantMessage = {
+  role: 'assistant',
+  content: '### Welcome\nI can explain difficult topics, create revision plans and suggest practical ways to improve your study routine.\n\n### Try asking\n- Explain a concept in simple language.\n- Build a revision plan for an upcoming assessment.\n- Help me improve my concentration.',
+};
+
+const promptGroups = [
+  { label: 'Understand', icon: BookOpen, prompts: ['Explain this topic simply', 'Create a short practice quiz'] },
+  { label: 'Plan', icon: Target, prompts: ['Create a 7-day revision plan', 'What should I study next?'] },
+  { label: 'Focus', icon: Brain, prompts: ['How can I improve my focus?', 'Suggest a better study routine'] },
+];
+
+function AIAssistantContent() {
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const visibleMessages = messages.length ? messages : [welcomeMessage];
+
+  const handleSend = async (question = message) => {
+    const content = question.trim();
+    if (!content || loading) return;
+    const optimistic: AssistantMessage = { role: 'user', content, createdAt: new Date().toISOString() };
+    setMessage('');
+    setMessages((previous) => [...previous, optimistic]);
+    setLoading(true);
+    try {
+      const response = await assistantAPI.chat(content);
+      setMessages((previous) => [...previous, { role: 'assistant', content: response.data.response, createdAt: new Date().toISOString() }]);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'The study assistant is temporarily unavailable');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void handleSend();
+    }
+  };
+
+  return (
+    <div className="universe-shell pb-20 lg:pb-0">
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <main className="min-w-0 flex-1 p-4 md:p-6 xl:p-8">
+          <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="mb-1 flex items-center gap-2 text-sm font-bold text-[#F1FEC8]"><Sparkles className="h-4 w-4" /> PERSONALISED STUDY SUPPORT</p>
+              <h1 className="universe-page-title text-2xl font-extrabold md:text-3xl">AI Study Assistant</h1>
+              <p className="universe-page-copy mt-1 text-sm">Ask questions, plan revision and turn difficult topics into manageable steps.</p>
+            </div>
+            <div className="liquid-control flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-heading"><ShieldCheck className="h-4 w-4" /> Conversations are not saved</div>
+          </header>
+
+          <div className="grid min-h-[680px] gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
+            <aside className="space-y-5">
+              <section className="liquid-glass rounded-2xl p-5">
+                <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-secondary/70 p-2 text-primary"><Lightbulb className="h-5 w-5" /></div><div><h2 className="font-extrabold text-heading">Ask by goal</h2><p className="text-xs text-body">Choose a starting point</p></div></div>
+                <div className="space-y-4">
+                  {promptGroups.map(({ label, icon: Icon, prompts }) => (
+                    <div key={label}>
+                      <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-body"><Icon className="h-3.5 w-3.5" /> {label}</p>
+                      <div className="space-y-2">{prompts.map((prompt) => <button key={prompt} onClick={() => void handleSend(prompt)} disabled={loading} className="w-full rounded-xl border border-white/70 bg-white/35 px-3 py-2.5 text-left text-xs font-semibold leading-5 text-heading transition hover:border-secondary hover:bg-secondary/40 disabled:opacity-50">{prompt}</button>)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
+
+            <section className="liquid-glass flex min-h-[680px] min-w-0 flex-col overflow-hidden rounded-3xl">
+              <div className="flex items-center justify-between border-b border-white/50 px-5 py-4">
+                <div className="flex items-center gap-3"><div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-secondary"><Bot className="h-5 w-5" /><span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" /></div><div><p className="text-sm font-extrabold text-heading">Eduvo Assistant</p><p className="text-xs text-body">Ready to support your study</p></div></div>
+              </div>
+
+              <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+                {visibleMessages.map((item, index) => (
+                  <MessageBubble key={item._id || `${item.role}-${index}`} message={item} />
+                ))}
+                {loading && <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-secondary"><Bot className="h-4 w-4" /></div><div className="rounded-2xl rounded-tl-md bg-white/55 px-4 py-3"><div className="flex items-center gap-2 text-sm text-body"><LoadingSpinner size="sm" /> Organising a helpful response…</div></div></div>}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="border-t border-white/50 bg-white/20 p-4 md:p-5">
+                <div className="liquid-control flex items-end gap-2 rounded-2xl p-2">
+                  <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={handleKeyDown} rows={1} maxLength={2000} placeholder="Ask a learning question…" className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-heading outline-none placeholder:text-body/70" />
+                  <button onClick={() => void handleSend()} disabled={!message.trim() || loading} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-secondary shadow-md transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-5 w-5" /></button>
+                </div>
+                <div className="mt-2 flex justify-between px-1 text-[11px] text-body"><span>Enter to send · Shift+Enter for a new line</span><span>{message.length}/2000</span></div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ message }: { message: AssistantMessage }) {
+  const isUser = message.role === 'user';
+  return (
+    <div className={`flex items-start gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {!isUser && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-secondary"><Bot className="h-4 w-4" /></div>}
+      <div className={`max-w-[88%] rounded-2xl px-4 py-3 md:max-w-[76%] ${isUser ? 'rounded-tr-md bg-primary text-white' : 'rounded-tl-md border border-white/60 bg-white/55 text-heading'}`}>
+        {isUser ? <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p> : <StructuredReply content={message.content} />}
+        {message.createdAt && <p className={`mt-2 text-[10px] ${isUser ? 'text-white/55' : 'text-body/70'}`}>{new Date(message.createdAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
+      </div>
+    </div>
+  );
+}
+
+function StructuredReply({ content }: { content: string }) {
+  return <div className="space-y-2 text-sm leading-6">{content.split('\n').map((line, index) => {
+    const value = line.trim();
+    if (!value) return <div key={index} className="h-1" />;
+    if (value.startsWith('### ')) return <h3 key={index} className="pt-1 font-extrabold text-heading">{value.slice(4)}</h3>;
+    if (value.startsWith('## ')) return <h3 key={index} className="pt-1 text-base font-extrabold text-heading">{value.slice(3)}</h3>;
+    if (/^[-*] /.test(value)) return <div key={index} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><p>{value.slice(2)}</p></div>;
+    if (/^\d+\. /.test(value)) return <p key={index} className="pl-1">{value}</p>;
+    return <p key={index}>{value.replace(/\*\*/g, '')}</p>;
+  })}</div>;
+}
+
+export default function Page() {
+  return <ProtectedRoute role="student"><AIAssistantContent /></ProtectedRoute>;
+}
