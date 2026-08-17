@@ -141,14 +141,21 @@ router.put('/consent', verifyToken, async (req, res) => {
     if (attentionConsent !== undefined) user.consent.attentionConsent = attentionConsent;
     if (retentionConsent !== undefined) user.consent.retentionConsent = retentionConsent;
 
-    if (
+    const previouslyGiven = user.consent.given;
+    const allRequiredConsentGiven = Boolean(
       user.consent.webcamConsent &&
       user.consent.emotionConsent &&
       user.consent.attentionConsent &&
       user.consent.retentionConsent
-    ) {
-      user.consent.given = true;
+    );
+
+    // Recompute the aggregate flag on every update. This allows a learner to
+    // revoke any consent option instead of leaving an old `given: true` value.
+    user.consent.given = allRequiredConsentGiven;
+    if (allRequiredConsentGiven && !previouslyGiven) {
       user.consent.givenAt = Date.now();
+    } else if (!allRequiredConsentGiven) {
+      user.consent.givenAt = undefined;
     }
 
     await user.save();
